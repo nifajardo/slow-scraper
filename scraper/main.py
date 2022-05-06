@@ -10,9 +10,14 @@ import sys
 # get_ipython().system('{sys.executable} -m pip install -r requirements.txt')
 # get_ipython().system('{sys.executable} -m pip install chromedriver')
 
+#import for date usage
+from datetime import datetime
+import urllib3
 
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 # In[34]:
-
+import time
+st = time.time()
 
 # import for navigation
 import time
@@ -33,7 +38,7 @@ import requests
 import certifi
 from bs4 import BeautifulSoup as bs
 
-# In[35]:
+import pandas as pd
 
 
 # webbrowser.open('https://publicaccess.aylesburyvaledc.gov.uk/online-applications/')  # Go to example.com
@@ -51,14 +56,29 @@ LINKS = ['https://publicaccess.wycombe.gov.uk/idoxpa-web/search.do?action=weekly
              'https://publicaccess.aylesburyvaledc.gov.uk/online-applications/search.do?action=weeklyList',
              'https://pa.chilternandsouthbucks.gov.uk/online-applications/search.do?action=weeklyList'
              ]
+urls = []
+rows = []
+dpl = []
+data_dictionary = {}
 def main():
 
     for index, i in enumerate(LINKS):
+        urls.clear()
+        rows.clear()
+        dpl.clear()
+        data_dictionary.clear()
         browser_controller(i, NAMES[index])
 
         # driver.get()
         # driver.get('    )
     driver.close()
+    #et = time.time()
+    #elapsed_time = et - st
+    #res = et - st
+    #final_res = res / 60
+    #print('Execution time:', elapsed_time, 'seconds')
+    #print('Execution time:', final_res, 'minutes')
+
     print('Scraping Done')
 
 
@@ -70,9 +90,6 @@ def main():
 
 # In[174]:
 
-urls = []
-rows = []
-dpl = []
 
 
 # reading of each title
@@ -81,29 +98,6 @@ def read_data():
     urls.append([titles.get_attribute("href") for titles in WebDriverWait(driver, 5).until(
         EC.visibility_of_all_elements_located((By.CSS_SELECTOR, "li.searchresult a")))])
     print(urls)
-
-
-# In[161]:
-
-
-# wait till the search results page is loaded
-
-# list initialization and clear every run
-
-
-# method for determining the final field labels to be used
-def field_check(curr_list, new_list):
-    print('curr')
-    print(curr_list)
-
-    print('new')
-    print(new_list)
-    if (len(curr_list) < len(new_list)):
-        return new_list
-    return curr_list
-
-
-# In[70]:
 
 
 #
@@ -121,112 +115,39 @@ def no_results(to_check):
         if (table.text):
             headers = []
             trs = table.find_all('li')
-            return False
+            return True
 
 
 
     except AttributeError:
-        print('Does not have Results yet')
-        print('Terminating the Program')
-        return True
+        #print('Does not have Results yet')
+        #print('Terminating the Program')
+        return False
     except NameError:
-        print('Does not have Results yet')
-        print('Terminating the Program')
-        return True
+        #print('Does not have Results yet')
+        #print('Terminating the Program')
+        return False
     except:
-        print('Does not have Results yet')
-        print('Terminating the Program')
-        return True
+        #print('Does not have Results yet')
+        #print('Terminating the Program')
+        return False
 
 
+#this method is used to add a new data in our dictionary
+def add_to_dictionary(summary):
+    index = len(data_dictionary)
 
+    # for i in contacts:
+    # summary.append(i)
+    data_dictionary[index] = summary
 
+def export(name):
 
-
-def get_largest_field_count():
-    count = 0
-
-    field_container = ['']
-    for link in urls:
-
-        for inner in link:
-            temp = []
-            URL = inner
-            URL = URL.replace("[", "")
-            URL = URL.replace("]", "")
-            req4 = requests.get(URL, verify=False)
-            html = inner
-            # soup = bs(html, parser='lxml')
-            soup4 = bs(req4.text, 'html.parser')
-
-            table = soup4.find('table', {'id': 'simpleDetailsTable'})
-
-            def rowgetHeaderText(tr, coltag):  # td (data) or th (header)
-                return tr.find(coltag).get_text(strip=True)
-
-            headers = []
-            trs = table.find_all('tr')
-            for tr in trs:  # for every table row
-                headers.append(rowgetHeaderText(tr, 'th'))  # data row
-
-            field_container = field_check(field_container, headers)
-
-    count = len(field_container)
-    print('largest field count')
-    print(field_container)
-    return field_container
-
-
-print('Compiled Successfully')
-
-
-# In[118]:
-
-
-#
-
-def get_largest_field_count_contacts():
-    count = 0
-
-    field_container = ['']
-    for link in urls:
-
-        for inner in link:
-            try:
-                temp = []
-                URL = inner
-                URL = URL.replace("[", "")
-                URL = URL.replace("]", "")
-                URL = URL.replace("summary", "contacts")
-                req = requests.get(URL, verify=False)
-                html = inner
-                # soup = bs(html, parser='lxml')
-                soup = bs(req.text, 'html.parser')
-
-                table = soup.find('table', {'class': 'agents'})
-
-                if (table.text):
-                    def rowgetHeaderText(tr, coltag):  # td (data) or th (header)
-                        return tr.find(coltag).get_text(strip=True)
-
-                    headers = []
-                    trs = table.find_all('tr')
-                    for tr in trs:  # for every table row
-                        headers.append(rowgetHeaderText(tr, 'th'))  # data row
-
-                    field_container = field_check(field_container, headers)
-
-            except AttributeError:
-                print('nothing found')
-            except NameError:
-                print('Name Error')
-            except:
-                print('Does not have Agent')
-    count = len(field_container)
-    print('counting done')
-    print(field_container)
-    return field_container
-
+    df = pd.DataFrame(list(data_dictionary.values()), index=data_dictionary.keys())
+    now = datetime.now()
+    dt_string = now.strftime("%d-%m-%Y")
+    stri =name +'_' + dt_string
+    df.to_csv(stri + '.csv', index=False, encoding='utf-8')
 
 # week beginning selection
 # wait till load
@@ -239,14 +160,19 @@ def browser_controller(link, name):
 
     # filter set up
     sel = webdriver.support.select.Select(driver.find_element_by_name('week'))
+
+    #selecting the first available week fromt he options
     sel.select_by_index(0)
-    name2 = sel
+
+    #ensuring that the Date Validated option is ticked
     validated_rb = driver.find_element_by_id('dateValidated')
     validated_rb.click()
 
     # clicking of search button
     search_btn = driver.find_element_by_css_selector('input.primary.recaptcha-submit')
     search_btn.click()
+
+    #checking if there are results aready
     if (no_results(name)):
         # print('There is no data yet')
         sys.exit()
@@ -269,44 +195,22 @@ def browser_controller(link, name):
     rows = urls
     print(rows)
 
-    # In[4]:
-
-    # In[5]:
-
-    # In[21]:
-
     # edit the headers
-    fields = ['Reference', 'Application Validated', 'Address', 'Proposal', 'Status', 'Email', 'Phone']
-
-    # In[46]:
-
-    column_count = get_largest_field_count()
-
-    column_count_additionals = get_largest_field_count_contacts()
-
-    field_indexes = [''] * len(column_count)
-    # variables for the scraped data
-
-    contacts_field_indexes = [''] * len(column_count_additionals)
+    #fields = ['Reference', 'Application Validated', 'Address', 'Proposal', 'Status', 'Email', 'Phone']
 
     # code for scraping
     for link in rows:
         for inner in link:
             iteration = 0
-            temp_array = ['No Data'] * len(column_count)
-            temp_array2 = ['No Data'] * len(column_count_additionals)
-            collect = []
-            temp = []
+
             URL = inner
             URL = URL.replace("[", "")
             URL = URL.replace("]", "")
-
             URL2 = URL.replace("summary", "contacts")
             req = requests.get(URL, verify=False)
             req2 = requests.get(URL2, verify=False)
             soup = bs(req.text, 'html.parser')
             soup2 = bs(req2.text, 'html.parser')
-
             # html = inner
             # soup = bs(html, parser='lxml')
 
@@ -320,21 +224,27 @@ def browser_controller(link, name):
 
                 return tr.find(coltag).get_text(strip=True)
 
+            temp_dic = {}
+            temp_key = ''
+            temp_val = ''
+            td = []
+            headers = []
             trs = table.find_all('tr')
             table2 = soup2.find('table', {'class': 'agents'})
             # for summary scraping
-            print(column_count)
             for index, tr in enumerate(trs):  # for every table row
 
-                print(column_count[index])
-                print(rowgetHeaderText(tr, 'th'))
-                if (column_count[index] == rowgetHeaderText(tr, 'th')):
-                    temp_array[index] = rowgetDataText(tr, 'td')
+                temp_key = rowgetHeaderText(tr, 'th')
+                temp_val = rowgetDataText(tr, 'td')
 
-                elif (rowgetHeaderText(tr, 'th') in column_count):
-                    temp_array[column_count.index(rowgetHeaderText(tr, 'th'))] = rowgetDataText(tr, 'td')
-                else:
-                    temp_array[index] = 'No Data'
+                temp_dic[temp_key] = temp_val
+            # if(column_count[index] == rowgetHeaderText(tr, 'th')):
+            # temp_array[index] = rowgetDataText(tr, 'td')
+            # temp_key = rowgetDataText(tr, 'td')
+            # elif ( rowgetHeaderText(tr, 'th')  in column_count):
+            # temp_array[column_count.index(rowgetHeaderText(tr, 'th'))] = rowgetDataText(tr, 'td')
+            # else:
+            # temp_array[index] =  'No Data'
 
             # for contacts scraping
 
@@ -358,50 +268,39 @@ def browser_controller(link, name):
                     print(rowgetHeaderText(tr, 'th'))
                     print(rowgetDataText(tr, 'td'))
 
-                    if ('mail' in rowgetDataText(tr, 'td')):
-                        temp_array2[get_indexOf(column_count_additionals, 'email')] = rowgetDataText(tr, 'td')
-                    elif (column_count_additionals[index] == rowgetHeaderText(tr, 'th')):
-                        temp_array2[index] = rowgetDataText(tr, 'td')
+                    temp_key = rowgetHeaderText(tr, 'th')
+                    temp_val = rowgetDataText(tr, 'td')
 
-                    elif (rowgetHeaderText(tr, 'th') in column_count_additionals):
-                        temp_array2[column_count_additionals.index(rowgetHeaderText(tr, 'th'))] = rowgetDataText(tr,
-                                                                                                                 'td')
+                    temp_dic[temp_key] = temp_val
 
-                    elif ('phone' in rowgetHeaderText(tr, 'th')):
-                        temp_array2[get_indexOf(column_count_additionals, 'phone')] = rowgetDataText(tr, 'td')
+                    # if ('mail' in rowgetDataText(tr, 'td') ):
+                    # temp_array2[get_indexOf(column_count_additionals, 'email')] = rowgetDataText(tr, 'td')
+                # elif(column_count_additionals[index] == rowgetHeaderText(tr, 'th')):
+                # temp_array2[index] = rowgetDataText(tr, 'td')
 
+                # elif ( rowgetHeaderText(tr, 'th')  in column_count_additionals):
+                # temp_array2[column_count_additionals.index(rowgetHeaderText(tr, 'th'))] = rowgetDataText(tr, 'td')
 
-                    else:
-                        temp_array2[index] = 'No Data'
+                # elif ('phone' in rowgetHeaderText(tr, 'th') ):
+                # temp_array2[get_indexOf(column_count_additionals, 'phone')] = rowgetDataText(tr, 'td')
 
-                else:
-                    print('no dataaa')
+                # else:
+                # temp_array2[index] =  'No Data'
 
-            except AttributeError:
-                print('nothing found')
+               # else:
+                    #print('no dataaa')
+
             except NameError:
                 print('Name Error')
             except:
                 print('Does not have Agent')
+            add_to_dictionary(temp_dic)
+    print('Done Collecting Data')
+    print('Exporting...')
+    export(name)
 
-            # td.append(rowgetDataText(tr, 'td') ) # data row
-            # headers.append(rowgetHeaderText(tr, 'th') ) # data row
 
-            iteration += 1
-            print('\nTemp Array2')
-            print(temp_array2)
-            dpl.append(temp_array + temp_array2)
-    print('Done')
 
-    # code for exporting
-    with open(name + '_latest.csv', 'wt', newline='') as f:
-        csv_writer = csv.writer(f)
-
-        csv_writer.writerow(column_count + column_count_additionals)  # write header
-
-        for row in dpl:
-            csv_writer.writerow(row)
-    print('csv exported')
 
 
 # Press the green button in the gutter to run the script.
